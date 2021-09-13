@@ -2,23 +2,26 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 
 import javax.swing.*;
 import java.util.Random;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
+import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
 public class GamePanel extends JPanel implements ActionListener {
 	long elapsedTime;
 	long pauseTime;
+	int gameHard = 0;
 	static final int SCREEN_WIDTH = 700;
 	static final int SCREEN_HEIGHT = 700;
 	static final int UNIT_SIZE = 25;
 	static final int GAME_UNITS = (SCREEN_WIDTH * SCREEN_HEIGHT) / UNIT_SIZE;
-	static final int DELAY = 30;
+	int DELAY = 50;
 	final int x[] = new int[GAME_UNITS];
 	final int y[] = new int[GAME_UNITS];
 	long startTime = System.currentTimeMillis();
@@ -28,6 +31,7 @@ public class GamePanel extends JPanel implements ActionListener {
 	int appleY;
 	char direction = 'R';
 	boolean running = false;
+	boolean runCon = false;
 	Timer timer;
 	Random random;
 
@@ -37,37 +41,90 @@ public class GamePanel extends JPanel implements ActionListener {
 		this.setBackground(Color.black);
 		this.setFocusable(true);
 		this.addKeyListener(new MyKeyAdapter());
-		File file = new File("music.wav");
-		AudioInputStream audioStream = AudioSystem.getAudioInputStream(file);
-		Clip clip = AudioSystem.getClip();
-		clip.open(audioStream);
-		clip.loop(clip.LOOP_CONTINUOUSLY);
-		clip.start();
+		//clip.start();
 		
-		
-		
-		startGame();
-
+		if(runCon) {
+			startGame();
+		}
 	}
-
+	void playSound(String soundFile,boolean loop,float volume) {
+		try {
+	    File f = new File("./" + soundFile);
+	    AudioInputStream audioIn = AudioSystem.getAudioInputStream(f.toURI().toURL());  
+	    Clip clip = AudioSystem.getClip();
+	    clip.open(audioIn);
+	    clip.start();
+	    if(loop) {
+	    	clip.loop(Clip.LOOP_CONTINUOUSLY);
+	    }
+	    FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+		float range = gainControl.getMaximum() - gainControl.getMinimum();
+	   	float gain = (range * volume) + gainControl.getMinimum();
+	   	gainControl.setValue(gain);
+	    
+		} catch (UnsupportedAudioFileException e) {
+	         e.printStackTrace();
+	    } catch (IOException e) {
+	         e.printStackTrace();
+	    } catch (LineUnavailableException e) {
+	         e.printStackTrace();
+	    }
+	}
 	public void startGame() {
+		if(runCon) {
 		newApple();
 		running = true;
 		timer = new Timer(DELAY, this);
 		timer.start();
-		
+		playSound("music.wav",true,0.7f);
+		}
 
 	}
 
 	public void paintComponent(Graphics g) {
 		super.paintComponent(g);
+		
 		draw(g);
 
 	}
+	public void startMenu(Graphics g) {
+		
+	    JButton b1 = new JButton();   
+	    JButton b2 = new JButton();
+	    
+	    b1.setBounds(50,50, 500, 500);
+	    b1.setVisible(true);
+	    b2.setVisible(true);
+	    b1.setText("Start game");
+	    b2.setText("Make it faster");
+	    b2.setBounds(50,50,450,450);
+	    super.add(b2);
+	    super.add(b1);
+	    b2.addActionListener(new ActionListener() {
+	    	public void actionPerformed(ActionEvent e) {
+	    		DELAY = 30;
+	    	
+	    }
+	    });
+	    b1.addActionListener(new ActionListener() {
+	         public void actionPerformed(ActionEvent e) {
+	            runCon = true;
+	            startGame();
+	            b1.setVisible(false);
+	            
+	         }
+	      });
+	    
+	    
+	}
 
 	public void draw(Graphics g) {
-
-		if (running) {
+		if(!runCon) {
+			startMenu(g);
+		}
+	
+		
+		if (running && runCon) {
 
 			// grid
 			for (int i = 0; i < SCREEN_HEIGHT / UNIT_SIZE; i++) {
@@ -105,11 +162,14 @@ public class GamePanel extends JPanel implements ActionListener {
 			g.setFont(new Font("Calibri Light", Font.BOLD, 35));
 			g.setColor(Color.white);
 			g.drawString("Score: " + applesEaten, 500, 30);
-		} else {
+		} else if(runCon) {
 			gameOver(g);
+			
+		   }
+			
+			
 		}
 
-	}
 
 	public void move() {
 
@@ -186,7 +246,7 @@ public class GamePanel extends JPanel implements ActionListener {
 		g.drawString("Game Over!", (SCREEN_WIDTH - metrics.stringWidth("Game Over!")) / 2, SCREEN_HEIGHT / 2);
 		g.setFont(new Font("Calibri Light", Font.BOLD, 40));
 		g.drawString("Score: " + applesEaten, 275, 500);
-
+		playSound("goat.wav",false,1.0f);
 	}
 
 	@Override
